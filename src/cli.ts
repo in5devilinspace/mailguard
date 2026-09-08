@@ -1,6 +1,7 @@
 // Argument parsing and dispatch. main() returns the exit code; only
 // bin/mailguard.ts calls process.exit.
 import { readFileSync } from 'node:fs';
+import { isIP } from 'node:net';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import type { ParseArgsConfig } from 'node:util';
@@ -10,7 +11,7 @@ import { analyzeHeaders } from './headers.ts';
 import { formatDomainText, formatHeadersText, toJson } from './report.ts';
 import { DEFAULT_TIMEOUT_MS, systemResolver } from './resolver.ts';
 import type { Resolver } from './types.ts';
-import { DnsError, DomainNotFoundError, HeadersInputError, ZoneFormatError } from './types.ts';
+import { DomainNotFoundError, HeadersInputError, ResolverUnreachableError, ZoneFormatError } from './types.ts';
 import { loadZoneFile, zoneResolver } from './zone.ts';
 
 export interface Writer {
@@ -62,8 +63,8 @@ Options:
   --selector <name>    Probe this DKIM selector in addition to the defaults
                        (repeatable)
   --timeout <ms>       Per-query DNS timeout, default ${DEFAULT_TIMEOUT_MS}
-  --dns <ip>           Resolver address to use instead of the system resolver
-                       (repeatable)
+  --dns <ip>           Resolver address to use instead of the system resolver:
+                       an IPv4 or IPv6 literal without a port (repeatable)
   -h, --help           Show this help and exit 0
 
 --zone cannot be combined with --dns or --timeout.
@@ -71,8 +72,8 @@ Options:
 Exit codes:
   0  grade A or B
   1  grade C, D or F
-  2  usage error, unreadable or malformed zone file, invalid domain, or the
-     domain does not resolve at all
+  2  usage error, unreadable or malformed zone file, invalid domain, the
+     domain does not resolve at all, or the resolver answered no query at all
 `;
 
 const HEADERS_USAGE = `Usage: mailguard headers [file | -] [options]
@@ -158,6 +159,12 @@ async function runDomain(args: string[], io: CliIo): Promise<number> {
   if (zoneFile !== null && (timeoutRaw !== null || servers.length > 0)) {
     return usageError(io, 'domain', '--zone cannot be combined with --dns or --timeout');
   }
+  for (const server of servers) {
+    // node's setServers throws ERR_INVALID_IP_ADDRESS on anything else; reject it here as a usage error.
+    if (isIP(server) === 0) {
+      return usageError(io, 'domain', `--dns must be an IPv4 or IPv6 address literal without a port, got "${server}"`);
+    }
+  }
   let timeoutMs = DEFAULT_TIMEOUT_MS;
   if (timeoutRaw !== null) {
     if (!/^\d+$/.test(timeoutRaw) || Number(timeoutRaw) <= 0) {
@@ -191,8 +198,8 @@ async function runDomain(args: string[], io: CliIo): Promise<number> {
       io.stderr.write(`mailguard: ${err.message}\n`);
       return 2;
     }
-    if (err instanceof DnsError) {
-      io.stderr.write(`mailguard: DNS resolver failure (${err.code}): ${err.message}\n`);
+    if (err instanceof ResolverUnreachableError) {
+      io.stderr.write(`mailguard: ${err.message}\n`);
       return 2;
     }
     throw err;

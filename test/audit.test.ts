@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { auditDomain } from '../src/audit.ts';
 import { exitCodeForGrade, scoreFindings } from '../src/grade.ts';
 import { zoneResolver } from '../src/zone.ts';
-import { DomainNotFoundError } from '../src/types.ts';
+import type { Resolver } from '../src/types.ts';
+import { DnsError, DomainNotFoundError, ResolverUnreachableError } from '../src/types.ts';
 import { loadZone, spyResolver, throwingResolver } from './helpers.ts';
 
 const run = (zone: string, domain = 'example.com') => auditDomain(domain, zoneResolver(loadZone(zone)));
@@ -31,10 +32,38 @@ test('dmarc-missing scores 70 (C) and dmarc-p-none exactly 75 (C)', async () => 
   assert.deepEqual([none.score, none.grade], [75, 'C']);
 });
 
-test('nxdomain zone rejects with DomainNotFoundError; total resolver failure does not', async () => {
+test('nxdomain zone rejects with DomainNotFoundError', async () => {
   await assert.rejects(run('nxdomain'), DomainNotFoundError);
-  const report = await auditDomain('example.com', throwingResolver('ETIMEOUT'));
-  assert.equal(report.findings.filter((f) => f.id.endsWith('lookup-error')).length >= 3, true);
+});
+
+test('a resolver that answers nothing rejects with ResolverUnreachableError instead of grading', async () => {
+  for (const code of ['ETIMEOUT', 'ECONNREFUSED', 'ESERVFAIL']) {
+    await assert.rejects(auditDomain('example.com', throwingResolver(code)), (err: unknown) => {
+      assert.ok(err instanceof ResolverUnreachableError, `expected ResolverUnreachableError for ${code}`);
+      assert.equal(err.domain, 'example.com');
+      assert.deepEqual(err.codes, [code]);
+      assert.ok(err.queries >= 4, `expected at least 4 queries, saw ${err.queries}`);
+      assert.match(err.message, /^example\.com could not be audited/);
+      assert.match(err.message, new RegExp(code));
+      assert.equal(err.message.includes('—'), false);
+      return true;
+    });
+  }
+});
+
+test('a resolver that answers some queries still grades and reports the failures as lookup-error findings', async () => {
+  const good = zoneResolver(loadZone('all-good'));
+  const flaky: Resolver = {
+    resolveTxt: (name) => (name === 'example.com' ? Promise.reject(new DnsError('ETIMEOUT')) : good.resolveTxt(name)),
+    resolveMx: good.resolveMx,
+    resolve4: good.resolve4,
+    resolve6: good.resolve6,
+  };
+  const report = await auditDomain('example.com', flaky);
+  assert.deepEqual(report.findings.filter((f) => f.id.endsWith('lookup-error')).map((f) => f.id), ['spf.lookup-error']);
+  assert.equal(report.checks.spf.record, null);
+  assert.equal(report.checks.dmarc.policy, 'reject');
+  assert.ok(['A', 'B', 'C', 'D', 'F'].includes(report.grade));
 });
 
 test('findings come in spf, dmarc, dkim, mx, extras order and are well formed', async () => {

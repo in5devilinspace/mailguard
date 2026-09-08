@@ -94,6 +94,52 @@ test('A7: nxdomain zone exits 2 with "does not resolve" on stderr', async () => 
   assert.match(result.stderr, /does not resolve/);
 });
 
+import { main } from '../src/cli.ts';
+import type { ResolverOptions } from '../src/cli.ts';
+import { memoryIo, throwingResolver } from './helpers.ts';
+
+test('A10: a resolver that answers nothing exits 2 with a message on stderr and nothing on stdout', async () => {
+  for (const extra of [[], ['--json']]) {
+    const io = memoryIo({ makeResolver: () => throwingResolver('ECONNREFUSED') });
+    const code = await main(['domain', 'example.com', '--timeout', '300', ...extra], io.io);
+    assert.equal(code, 2, `args ${extra.join(' ')} stderr: ${io.stderr()}`);
+    assert.equal(io.stdout(), '');
+    assert.match(io.stderr(), /^mailguard: example\.com could not be audited/);
+    assert.match(io.stderr(), /ECONNREFUSED/);
+    assert.doesNotMatch(io.stderr(), /Grade/);
+  }
+});
+
+test('A11: --dns accepts IPv4 and IPv6 literals and rejects anything else with a usage error', async () => {
+  // In-process: an invalid address must be rejected before any resolver is built.
+  for (const bad of ['notanip', '', '999.1.1.1', '1.1.1.1:53', '[2001:db8::53]', ' 192.0.2.53']) {
+    const io = memoryIo({ makeResolver: () => assert.fail(`resolver was built for --dns ${JSON.stringify(bad)}`) });
+    const code = await main(['domain', 'example.com', '--dns', bad], io.io);
+    assert.equal(code, 2, `--dns ${JSON.stringify(bad)} stderr: ${io.stderr()}`);
+    assert.equal(io.stdout(), '');
+    assert.match(io.stderr(), /^mailguard: --dns .*IPv4 or IPv6/);
+    assert.match(io.stderr(), /Usage: mailguard domain/);
+  }
+  // Child process: the reviewer's exact commands must not leak a stack trace.
+  for (const bad of ['notanip', '']) {
+    const result = await runCli(['domain', 'example.com', '--dns', bad]);
+    assert.equal(result.code, 2, `--dns ${JSON.stringify(bad)} stderr: ${result.stderr}`);
+    assert.equal(result.stdout, '');
+    assert.doesNotMatch(result.stderr, /ERR_INVALID_IP_ADDRESS|\n    at /);
+  }
+  // Valid literals reach the resolver factory untouched, together with --timeout.
+  let seen: ResolverOptions | null = null;
+  const io = memoryIo({
+    makeResolver: (options) => {
+      seen = options;
+      return zoneResolver(loadZone('all-good'));
+    },
+  });
+  const code = await main(['domain', 'example.com', '--dns', '192.0.2.53', '--dns', '2001:db8::53', '--timeout', '250'], io.io);
+  assert.equal(code, 0, io.stderr());
+  assert.deepEqual(seen, { timeoutMs: 250, servers: ['192.0.2.53', '2001:db8::53'] });
+});
+
 import { analyzeHeaders } from '../src/headers.ts';
 import { readEml } from './helpers.ts';
 

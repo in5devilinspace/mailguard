@@ -44,7 +44,7 @@ Audits `<domain>` and prints a graded report. The domain is lowercased and a tra
 | `--zone <file.json>` | Answer every DNS query from an offline zone file instead of the network. Use it to dry-run a DNS change before publishing it, or to audit a domain you do not control yet. See the format below. |
 | `--selector <name>` | Probe this DKIM selector in addition to the default list. Repeatable. Names are lowercased and duplicates are queried once. |
 | `--timeout <ms>` | Per-query DNS timeout in milliseconds. Default 5000. Must be a positive integer. |
-| `--dns <ip>` | Send queries to this resolver address instead of the system resolver. Repeatable. IPv4 or IPv6. |
+| `--dns <ip>` | Send queries to this resolver address instead of the system resolver. Repeatable. The value must be a bare IPv4 or IPv6 literal such as `192.0.2.53` or `2001:db8::53`; a hostname, a bracketed address or an address with a port is a usage error (exit 2). |
 
 `--zone` cannot be combined with `--dns` or `--timeout`; that combination is a usage error.
 
@@ -52,7 +52,7 @@ What the audit queries: the TXT records of the domain, of every `include:` targe
 
 Queries run concurrently (DKIM selectors five at a time) but the SPF include chain is sequential, so against a slow resolver the worst case is roughly the number of includes multiplied by the timeout.
 
-A DNS error inside one check becomes a warning finding in that check rather than a crash. Only two things abort the audit with exit code 2: the domain does not exist at all (TXT, MX, A and AAAA all NXDOMAIN) or the resolver itself is unreachable.
+A DNS error inside one check becomes a warning finding in that check rather than a crash, and the grade is computed from what could be checked. Only two things abort the audit with exit code 2 and print nothing on stdout: the domain does not exist at all (TXT, MX, A and AAAA all NXDOMAIN), or the resolver answered no query at all, meaning every lookup failed with a transport error such as ETIMEOUT, ECONNREFUSED or ESERVFAIL. In that second case stderr says `example.com could not be audited: all 26 DNS queries failed with ECONNREFUSED, so the resolver is unreachable or refusing queries`. NXDOMAIN and empty answers count as answers, so a domain with nothing configured is graded F, not aborted.
 
 ### headers
 
@@ -235,13 +235,13 @@ DKIM is never deducted for being absent, because the probe only guesses selector
 | --- | --- | --- |
 | 0 | Grade A or B | At least one header parsed |
 | 1 | Grade C, D or F | not used |
-| 2 | Usage error, invalid domain, unreadable or malformed zone file, `--zone` combined with `--dns` or `--timeout`, the domain does not exist (NXDOMAIN for TXT, MX, A and AAAA), or the resolver is unreachable | Usage error, unreadable file, empty input, or no headers found |
+| 2 | Usage error, invalid domain, invalid `--dns` or `--timeout` value, unreadable or malformed zone file, `--zone` combined with `--dns` or `--timeout`, the domain does not exist (NXDOMAIN for TXT, MX, A and AAAA), or the resolver answered no query at all | Usage error, unreadable file, empty input, or no headers found |
 
-The grade is the only thing that decides between 0 and 1, so a shell script can use `mailguard domain example.com --json && echo ok` as a pass/fail check.
+The grade is the only thing that decides between 0 and 1, so a shell script can use `mailguard domain example.com --json && echo ok` as a pass/fail check; a domain that could not be checked at all fails that gate with exit 2 rather than passing with an empty A.
 
 ## JSON output
 
-With `--json`, stdout carries exactly one JSON document and nothing else. Identical DNS answers produce byte-identical output: findings are listed in check order (spf, dmarc, dkim, mx), DKIM selector results are sorted by selector name, and there are no timestamps or durations in a report.
+With `--json`, stdout carries exactly one JSON document and nothing else. Identical DNS answers produce byte-identical output: findings are listed in check order (spf, dmarc, dkim, mx, extras), DKIM selector results are sorted by selector name, and there are no timestamps or durations in a report.
 
 `domain`:
 

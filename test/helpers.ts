@@ -39,6 +39,7 @@ export function withoutNodeWarnings(stderr: string): string {
 }
 
 import { readFileSync } from 'node:fs';
+import type { CliIo } from '../src/cli.ts';
 import type { Resolver, MxRecord } from '../src/types.ts';
 import { DnsError } from '../src/types.ts';
 import type { ZoneData, ZoneEntry } from '../src/zone.ts';
@@ -110,5 +111,30 @@ export function fakeResolver(parts: Partial<Resolver>): Resolver {
     resolveMx: parts.resolveMx ?? (nodata as () => Promise<MxRecord[]>),
     resolve4: parts.resolve4 ?? nodata,
     resolve6: parts.resolve6 ?? nodata,
+  };
+}
+
+export interface MemoryIo {
+  io: CliIo;
+  stdout(): string;
+  stderr(): string;
+}
+
+/** An in-process CliIo that buffers output; makeResolver replaces the system resolver so no test touches the network. */
+export function memoryIo(options: { stdin?: string; makeResolver?: CliIo['makeResolver'] } = {}): MemoryIo {
+  let out = '';
+  let err = '';
+  async function* stdin(): AsyncGenerator<string> {
+    if (options.stdin !== undefined) yield options.stdin;
+  }
+  return {
+    io: {
+      stdout: { write: (chunk: string) => { out += chunk; return true; } },
+      stderr: { write: (chunk: string) => { err += chunk; return true; } },
+      stdin: stdin(),
+      makeResolver: options.makeResolver,
+    },
+    stdout: () => out,
+    stderr: () => err,
   };
 }

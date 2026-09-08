@@ -46,6 +46,27 @@ export class DomainNotFoundError extends Error {
   }
 }
 
+/**
+ * Thrown when every DNS query of an audit failed with a transport-level code
+ * (timeout, connection refused, server failure): nothing was checked, so no
+ * grade is possible. ENOTFOUND and ENODATA are answers, not failures.
+ */
+export class ResolverUnreachableError extends Error {
+  domain: string;
+  codes: string[];
+  queries: number;
+  constructor(domain: string, codes: string[], queries: number) {
+    super(
+      `${domain} could not be audited: all ${queries} DNS queries failed with ${codes.join(', ')}, ` +
+        'so the resolver is unreachable or refusing queries',
+    );
+    this.name = 'ResolverUnreachableError';
+    this.domain = domain;
+    this.codes = codes;
+    this.queries = queries;
+  }
+}
+
 export class ZoneFormatError extends Error {
   constructor(message: string) {
     super(message);
