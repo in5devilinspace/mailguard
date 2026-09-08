@@ -48,7 +48,7 @@ Audits `<domain>` and prints a graded report. The domain is lowercased and a tra
 
 `--zone` cannot be combined with `--dns` or `--timeout`; that combination is a usage error.
 
-What the audit queries: the TXT records of the domain, of every `include:` target and of every `redirect=` target for SPF (following the chain, with cycle detection and a hard cap of 50 counted lookups); `_dmarc.<domain>` and, when that is empty and the domain has more than two labels, `_dmarc.<organizational domain>`; `<selector>._domainkey.<domain>` for each probed selector; the MX records of the domain and the A and AAAA records of each MX host; and the A and AAAA records of the domain itself when there is no MX. SPF `a`, `mx`, `ptr` and `exists` mechanisms are counted toward the RFC 7208 lookup limit but never resolved, and the extra lookups an `mx` mechanism would cause at delivery time are not counted.
+What the audit queries: the TXT records of the domain, of every `include:` target and of every `redirect=` target for SPF (following the chain, with cycle detection and a hard cap of 50 counted lookups); `_dmarc.<domain>` and, when that is empty and the domain has more than two labels, `_dmarc.<organizational domain>`; `<selector>._domainkey.<domain>` for each probed selector; the MX records of the domain and the A and AAAA records of each MX host; the A and AAAA records of the domain itself when there is no MX; and the TXT records at `default._bimi.<domain>`, `_mta-sts.<domain>` and `_smtp._tls.<domain>` for the ungraded extras. SPF `a`, `mx`, `ptr` and `exists` mechanisms are counted toward the RFC 7208 lookup limit but never resolved, and the extra lookups an `mx` mechanism would cause at delivery time are not counted.
 
 Queries run concurrently (DKIM selectors five at a time) but the SPF include chain is sequential, so against a slow resolver the worst case is roughly the number of includes multiplied by the timeout.
 
@@ -105,6 +105,11 @@ DKIM
 MX
   [info] MX host mx1.example.com (priority 10) resolves to 2 addresses
   [info] MX host mx2.example.com (priority 20) resolves to 1 address
+
+Extras (BIMI, MTA-STS, TLS-RPT; not graded)
+  [info] BIMI record at default._bimi.example.com points to logo https://example.com/brand/logo.svg with certificate https://example.com/brand/vmc.pem
+  [info] MTA-STS record at _mta-sts.example.com has policy id 20250701; the policy file at https://mta-sts.example.com/.well-known/mta-sts.txt is not fetched
+  [info] TLS-RPT record at _smtp._tls.example.com sends reports to mailto:tlsrpt@example.com
 ```
 
 The same command on a domain with nothing configured (exit code 1):
@@ -125,6 +130,11 @@ DKIM
 
 MX
   [warning] example.com has no MX record, so mail falls back to its A/AAAA address (1 found) under the implicit MX rule
+
+Extras (BIMI, MTA-STS, TLS-RPT; not graded)
+  [info] No BIMI record at default._bimi.example.com; BIMI is optional and only shows a brand logo in mail clients that support it
+  [info] No MTA-STS record at _mta-sts.example.com; MTA-STS is optional and lets example.com require TLS from servers that deliver to it
+  [info] No TLS-RPT record at _smtp._tls.example.com; TLS-RPT is optional and collects reports about failed TLS connections to example.com
 ```
 
 The `headers` command on a message that passed everything:
@@ -211,7 +221,7 @@ The `domain` command starts at 100 and subtracts points for each problem it find
 | `mx.host-unresolvable` | -15 | An MX host has no A or AAAA record. |
 | `mx.ip-literal` | -10 | An MX exchange is an IP address instead of a hostname, which RFC 5321 forbids. |
 
-Every other finding id (`spf.record`, `dmarc.record`, `dmarc.inherited`, `dkim.found`, `dkim.none`, `dkim.revoked`, `dkim.unparseable`, `dkim.lookup-error`, `mx.null`, `mx.addresses`, the `*.lookup-error` warnings, and everything the `headers` command emits) deducts nothing. Each deduction id is applied at most once per audit no matter how many findings share it, so a domain with three weak DKIM keys loses 10 points, not 30. The score never goes below 0.
+Every other finding id (`spf.record`, `dmarc.record`, `dmarc.inherited`, `dkim.found`, `dkim.none`, `dkim.revoked`, `dkim.unparseable`, `dkim.lookup-error`, `mx.null`, `mx.addresses`, the `*.lookup-error` warnings, every `extras.*` finding, and everything the `headers` command emits) deducts nothing. Each deduction id is applied at most once per audit no matter how many findings share it, so a domain with three weak DKIM keys loses 10 points, not 30. The score never goes below 0.
 
 Grades: A is 90 or above, B is 80 to 89, C is 65 to 79, D is 50 to 64, F is below 50.
 
@@ -244,11 +254,18 @@ With `--json`, stdout carries exactly one JSON document and nothing else. Identi
     "spf":   { "record", "records", "lookupCount", "allQualifier", "includes", "redirects" },
     "dmarc": { "record", "source", "inherited", "policy", "subdomainPolicy", "effectivePolicy", "pct", "rua" },
     "dkim":  { "probed": [selector...], "selectors": [{ "selector", "keyType", "bits", "revoked", "flags" }] },
-    "mx":    { "nullMx", "records": [{ "priority", "exchange", "addresses" }] }
+    "mx":    { "nullMx", "records": [{ "priority", "exchange", "addresses" }] },
+    "extras": {
+      "bimi":   { "record", "location", "authority" },
+      "mtaSts": { "record", "id" },
+      "tlsRpt": { "record", "rua" }
+    }
   },
   "findings": [{ "check", "id", "severity": "error" | "warning" | "info", "message" }]
 }
 ```
+
+`findings[].check` is one of `spf`, `dmarc`, `dkim`, `mx`, `extras`, and every finding id starts with its check name.
 
 `headers`:
 
@@ -280,6 +297,18 @@ The probe always queries these 20 selectors, in this order, plus anything given 
 
 For each key found it reports the key type and size. RSA keys are decoded with `node:crypto` to read the modulus length; keys shorter than 2048 bits are flagged. Ed25519 keys (RFC 8463) are recognized by their 32-byte raw form and reported as 256 bits. A record with an empty `p=` is reported as revoked. Five selectors are queried at a time.
 
+## Extras: BIMI, MTA-STS and TLS-RPT
+
+After the four graded checks, the `domain` command reports three optional records. They never change the score; every finding they produce is `info`.
+
+| Record | Name queried | What is reported |
+| --- | --- | --- |
+| BIMI | `default._bimi.<domain>` | The logo URL (`l=`) and certificate URL (`a=`) of a `v=BIMI1` record, an empty `l=` that declines BIMI, or the absence of a record. |
+| MTA-STS | `_mta-sts.<domain>` | The policy id of a `v=STSv1` record, or its absence. The policy file at `https://mta-sts.<domain>/.well-known/mta-sts.txt` is not fetched. |
+| TLS-RPT | `_smtp._tls.<domain>` | The report addresses (`rua=`) of a `v=TLSRPTv1` record, or its absence. |
+
+A record that is present but missing its required tag is reported as `extras.<name>-invalid`; more than one record of a kind is reported as `extras.<name>-multiple`; a DNS failure other than "does not exist" is reported as `extras.lookup-error`. All are info.
+
 ## Organizational domain limitation
 
 mailguard finds the organizational domain by keeping the last two labels of a name: `mail.example.com` becomes `example.com`. It does not bundle the Public Suffix List, so this is wrong for domains under a two-label public suffix such as `co.uk`, `com.au` or `co.jp`, where `mail.example.co.uk` should map to `example.co.uk` but is mapped to `co.uk`. This affects two things: the DMARC fallback lookup for a subdomain, and relaxed alignment in the `headers` command. The `dmarc.inherited` message and the alignment output always name the domain that was actually consulted, so the mistake is visible when it happens.
@@ -291,7 +320,8 @@ mailguard finds the organizational domain by keeping the last two labels of a na
 - It does not expand SPF macros (`%{i}`, `%{s}` and so on). Terms containing macros are counted and kept as written.
 - It does not resolve `a`, `mx`, `ptr` or `exists` targets inside an SPF record; they are counted toward the lookup limit only.
 - It does not bundle the Public Suffix List (see the section above).
-- It does not check BIMI, MTA-STS, TLS-RPT, DANE, DNSSEC, ARC or Received-SPF headers.
+- It does not fetch the MTA-STS policy file, the BIMI logo or the BIMI certificate; it only reports the DNS records that point at them.
+- It does not check DANE, DNSSEC, ARC or Received-SPF headers.
 - It does not send test messages, connect to mail servers on port 25, or check TLS on MX hosts.
 - It does not read the message body and does not run any DNS query from the `headers` command.
 - It does not print colors, and it does not print timestamps or timing information in reports.

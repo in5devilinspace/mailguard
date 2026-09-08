@@ -2,6 +2,7 @@
 // the resolver: identical answers produce identical reports.
 import { auditDmarc } from './dmarc.ts';
 import { probeDkim } from './dkim.ts';
+import { auditExtras } from './extras.ts';
 import { scoreFindings } from './grade.ts';
 import { auditMx } from './mx.ts';
 import { auditSpf } from './spf.ts';
@@ -29,18 +30,19 @@ export async function auditDomain(domain: string, resolver: Resolver, options: A
     resolve6: (name) => track('AAAA', name, () => resolver.resolve6(name)),
   };
 
-  const [spf, dmarc, dkim, mx] = await Promise.all([
+  const [spf, dmarc, dkim, mx, extras] = await Promise.all([
     auditSpf(apex, tracked),
     auditDmarc(apex, tracked),
     probeDkim(apex, options.selectors ?? [], tracked),
     auditMx(apex, tracked),
+    auditExtras(apex, tracked),
   ]);
 
   if (notFound.TXT && notFound.MX && notFound.A && notFound.AAAA) {
     throw new DomainNotFoundError(apex);
   }
 
-  const findings: Finding[] = [...spf.findings, ...dmarc.findings, ...dkim.findings, ...mx.findings];
+  const findings: Finding[] = [...spf.findings, ...dmarc.findings, ...dkim.findings, ...mx.findings, ...extras.findings];
   const { score, grade } = scoreFindings(findings);
   return {
     domain: apex,
@@ -67,6 +69,7 @@ export async function auditDomain(domain: string, resolver: Resolver, options: A
       },
       dkim: { probed: dkim.probed, selectors: dkim.selectors },
       mx: { nullMx: mx.nullMx, records: mx.records },
+      extras: { bimi: extras.bimi, mtaSts: extras.mtaSts, tlsRpt: extras.tlsRpt },
     },
     findings,
   };

@@ -4,7 +4,7 @@
 
 export type Severity = 'error' | 'warning' | 'info';
 
-export type DomainCheck = 'spf' | 'dmarc' | 'dkim' | 'mx';
+export type DomainCheck = 'spf' | 'dmarc' | 'dkim' | 'mx' | 'extras';
 export type HeaderCheck = 'received' | 'auth' | 'alignment' | 'dkim-signature' | 'return-path';
 
 export interface Finding {
@@ -108,6 +108,13 @@ export interface MxSummary {
   records: MxHost[];
 }
 
+/** BIMI, MTA-STS and TLS-RPT presence. Informational only; never graded. */
+export interface ExtrasSummary {
+  bimi: { record: string | null; location: string | null; authority: string | null };
+  mtaSts: { record: string | null; id: string | null };
+  tlsRpt: { record: string | null; rua: string[] };
+}
+
 export interface DomainReport {
   domain: string;
   grade: Grade;
@@ -117,6 +124,7 @@ export interface DomainReport {
     dmarc: DmarcSummary;
     dkim: DkimSummary;
     mx: MxSummary;
+    extras: ExtrasSummary;
   };
   findings: Finding[];
 }

@@ -51,5 +51,20 @@
     "A": [
       "192.0.2.11"
     ]
+  },
+  "default._bimi.example.com": {
+    "TXT": [
+      "v=BIMI1; l=https://example.com/brand/logo.svg; a=https://example.com/brand/vmc.pem"
+    ]
+  },
+  "_mta-sts.example.com": {
+    "TXT": [
+      "v=STSv1; id=20250701"
+    ]
+  },
+  "_smtp._tls.example.com": {
+    "TXT": [
+      "v=TLSRPTv1; rua=mailto:tlsrpt@example.com"
+    ]
   }
 }

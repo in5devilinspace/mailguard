@@ -13,7 +13,7 @@ export function formatDomainText(report: DomainReport): string {
   const lines: string[] = [];
   lines.push(`Domain: ${report.domain}`);
   lines.push(`Grade: ${report.grade} (score ${report.score})`);
-  const sections: [string, string][] = [['spf', 'SPF'], ['dmarc', 'DMARC'], ['dkim', 'DKIM'], ['mx', 'MX']];
+  const sections: [string, string][] = [['spf', 'SPF'], ['dmarc', 'DMARC'], ['dkim', 'DKIM'], ['mx', 'MX'], ['extras', 'Extras (BIMI, MTA-STS, TLS-RPT; not graded)']];
   for (const [check, label] of sections) {
     lines.push('');
     lines.push(label);

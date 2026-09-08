@@ -37,12 +37,12 @@ test('nxdomain zone rejects with DomainNotFoundError; total resolver failure doe
   assert.equal(report.findings.filter((f) => f.id.endsWith('lookup-error')).length >= 3, true);
 });
 
-test('findings come in spf, dmarc, dkim, mx order and are well formed', async () => {
+test('findings come in spf, dmarc, dkim, mx, extras order and are well formed', async () => {
   const report = await run('nothing-configured');
-  const order = ['spf', 'dmarc', 'dkim', 'mx'];
+  const order = ['spf', 'dmarc', 'dkim', 'mx', 'extras'];
   const seen = report.findings.map((f) => order.indexOf(f.check));
   assert.deepEqual(seen, [...seen].sort((a, b) => a - b));
-  assert.equal(new Set(report.findings.map((f) => f.check)).size, 4);
+  assert.equal(new Set(report.findings.map((f) => f.check)).size, 5);
   for (const finding of report.findings) {
     assert.ok(['error', 'warning', 'info'].includes(finding.severity));
     assert.ok(finding.id.startsWith(finding.check + '.'));
@@ -57,7 +57,7 @@ test('two runs are deep-equal and check summaries carry no findings arrays', asy
   for (const summary of Object.values(first.checks)) {
     assert.equal('findings' in summary, false);
   }
-  assert.deepEqual(Object.keys(first.checks), ['spf', 'dmarc', 'dkim', 'mx']);
+  assert.deepEqual(Object.keys(first.checks), ['spf', 'dmarc', 'dkim', 'mx', 'extras']);
 });
 
 test('dkim-none and dkim-google-2048 score the same (no DKIM deduction)', async () => {
