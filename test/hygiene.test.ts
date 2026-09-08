@@ -29,11 +29,21 @@ test('node:dns is imported only by src/resolver.ts', () => {
   assert.deepEqual(offenders, []);
 });
 
-test('no TODO or FIXME markers in src, bin or README', () => {
+// Leftover-work wording that must never ship in src, bin or the README.
+const WORK_MARKERS = /\b(TODO|FIXME|placeholder|not implemented|unimplemented)\b/i;
+
+test('the work-marker pattern catches TODO, FIXME, placeholder and not-implemented wording', () => {
+  const flagged = ['// TODO: wire this up', 'FIXME later', 'return placeholder;', 'throw new Error("Not implemented")', 'unimplemented branch'];
+  for (const sample of flagged) assert.ok(WORK_MARKERS.test(sample), `should flag ${JSON.stringify(sample)}`);
+  const clean = ['SPF lookup count', 'DKIM selector default', 'the audit is implemented in audit.ts', 'todos.example.com'];
+  for (const sample of clean) assert.ok(!WORK_MARKERS.test(sample), `should not flag ${JSON.stringify(sample)}`);
+});
+
+test('no TODO, FIXME or placeholder markers in src, bin or README', () => {
   const files = walk(path.join(repoRoot, 'src'), SKIP)
     .concat(walk(path.join(repoRoot, 'bin'), SKIP))
     .concat([path.join(repoRoot, 'README.md')]);
-  const offenders = files.filter((file) => /\b(TODO|FIXME)\b/.test(readFileSync(file, 'utf8')));
+  const offenders = files.filter((file) => WORK_MARKERS.test(readFileSync(file, 'utf8')));
   assert.deepEqual(offenders, []);
 });
 

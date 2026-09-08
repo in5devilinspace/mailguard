@@ -49,7 +49,8 @@ Options:
 Exit codes:
   0  grade A or B (domain) or headers parsed
   1  grade C, D or F
-  2  usage error, unreadable input, or domain does not resolve
+  2  usage error, unreadable input, domain does not resolve, or the
+     resolver answered no query at all
 `;
 
 const DOMAIN_USAGE = `Usage: mailguard domain <domain> [options]

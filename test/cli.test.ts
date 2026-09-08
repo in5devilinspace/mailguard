@@ -94,7 +94,7 @@ test('A7: nxdomain zone exits 2 with "does not resolve" on stderr', async () => 
   assert.match(result.stderr, /does not resolve/);
 });
 
-import { main } from '../src/cli.ts';
+import { main, usage } from '../src/cli.ts';
 import type { ResolverOptions } from '../src/cli.ts';
 import { memoryIo, throwingResolver } from './helpers.ts';
 
@@ -174,4 +174,14 @@ test('A9: headers reads stdin (no argument or "-") and exits 2 on empty input or
   const missing = await runCli(['headers', 'test/fixtures/eml/does-not-exist.eml']);
   assert.equal(missing.code, 2);
   assert.match(missing.stderr, /does-not-exist\.eml/);
+});
+
+test('A12: top-level --help lists the same exit 2 causes as domain --help, including a resolver that answers nothing', async () => {
+  const top = usage('top');
+  assert.match(top, /does not resolve/);
+  assert.match(top, /resolver answered no query at all/);
+  assert.match(usage('domain'), /resolver answered no query at all/);
+  const result = await runCli(['--help']);
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(result.stdout, top);
 });
