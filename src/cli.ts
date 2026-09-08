@@ -6,10 +6,11 @@ import { parseArgs } from 'node:util';
 import type { ParseArgsConfig } from 'node:util';
 import { auditDomain } from './audit.ts';
 import { exitCodeForGrade } from './grade.ts';
-import { formatDomainText, toJson } from './report.ts';
+import { analyzeHeaders } from './headers.ts';
+import { formatDomainText, formatHeadersText, toJson } from './report.ts';
 import { DEFAULT_TIMEOUT_MS, systemResolver } from './resolver.ts';
 import type { Resolver } from './types.ts';
-import { DnsError, DomainNotFoundError, ZoneFormatError } from './types.ts';
+import { DnsError, DomainNotFoundError, HeadersInputError, ZoneFormatError } from './types.ts';
 import { loadZoneFile, zoneResolver } from './zone.ts';
 
 export interface Writer {
@@ -198,6 +199,49 @@ async function runDomain(args: string[], io: CliIo): Promise<number> {
   }
 }
 
+async function readAll(stdin: AsyncIterable<string | Uint8Array>): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stdin) chunks.push(typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : Buffer.from(chunk));
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+async function runHeaders(args: string[], io: CliIo): Promise<number> {
+  const parsed = safeParse(args, {
+    json: { type: 'boolean' },
+    help: { type: 'boolean', short: 'h' },
+  });
+  if ('error' in parsed) return usageError(io, 'headers', parsed.error);
+  const { values, positionals } = parsed;
+  if (values['help'] === true) {
+    io.stdout.write(usage('headers'));
+    return 0;
+  }
+  if (positionals.length > 1) return usageError(io, 'headers', `unexpected argument "${positionals[1]}"`);
+  const source = positionals[0] ?? '-';
+  let text: string;
+  if (source === '-') {
+    text = await readAll(io.stdin);
+  } else {
+    try {
+      text = readFileSync(source, 'utf8');
+    } catch (err) {
+      io.stderr.write(`mailguard: cannot read ${source}: ${err instanceof Error ? err.message : String(err)}\n`);
+      return 2;
+    }
+  }
+  try {
+    const report = analyzeHeaders(text);
+    io.stdout.write(values['json'] === true ? toJson(report) : formatHeadersText(report));
+    return 0;
+  } catch (err) {
+    if (err instanceof HeadersInputError) {
+      io.stderr.write(`mailguard: ${err.message}\n`);
+      return 2;
+    }
+    throw err;
+  }
+}
+
 export async function main(argv: string[], io: CliIo): Promise<number> {
   const first = argv[0];
   if (first === undefined) {
@@ -213,5 +257,6 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
     return 0;
   }
   if (first === 'domain') return runDomain(argv.slice(1), io);
+  if (first === 'headers') return runHeaders(argv.slice(1), io);
   return usageError(io, 'top', `unknown command "${first}"`);
 }

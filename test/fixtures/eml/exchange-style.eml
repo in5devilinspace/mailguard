@@ -1,0 +1,23 @@
+Received: from BN8PR12MB3379.namprd12.prod.example.net (2001:db8:408:6a::12)
+ by DM6PR12MB3178.namprd12.prod.example.net with HTTPS; Tue, 1 Jul 2025
+ 10:00:07 +0000
+Received: from mail.example.com (192.0.2.10) by
+ BN8PR12MB3379.namprd12.prod.example.net (2001:db8:408:6a::12) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.8880.19 via Frontend Transport; Tue, 1 Jul 2025 10:00:05 +0000
+Authentication-Results: spf=pass (sender IP is 192.0.2.10)
+ smtp.mailfrom=example.com; dkim=pass (signature was verified)
+ header.d=example.com;dmarc=pass action=none
+ header.from=example.com;compauth=pass reason=100
+Received-SPF: Pass (protection.example.net: domain of example.com designates
+ 192.0.2.10 as permitted sender) receiver=protection.example.net;
+ client-ip=192.0.2.10; helo=mail.example.com;
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=ZmFrZWJvZHloYXNo=; b=ZmFrZXNpZ25hdHVyZQ==
+From: Alice Example <alice@example.com>
+To: Bob Example <bob@example.net>
+Subject: Exchange shaped
+Date: Tue, 1 Jul 2025 10:00:05 +0000
+
+Body.

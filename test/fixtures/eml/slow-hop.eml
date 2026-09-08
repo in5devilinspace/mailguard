@@ -1,0 +1,8 @@
+Received: from mx.example.net (mx.example.net [192.0.2.20])
+	by inbox.example.net with ESMTPS id 4DdE56fgh7; Tue, 1 Jul 2025 10:06:40 +0000
+Received: from mail.example.com (mail.example.com [192.0.2.10])
+	by mx.example.net (Postfix) with ESMTPS id 5EeF67ghi8; Tue, 1 Jul 2025 10:00:00 +0000
+From: alice@example.com
+To: bob@example.net
+Subject: Slow
+

@@ -1,0 +1,17 @@
+Received: from relay.example.org (relay.example.org [203.0.113.40])
+	by inbox.example.net with ESMTPS id 0JjK12lmn3; Tue, 1 Jul 2025 10:00:04 +0000
+Authentication-Results: inbox.example.net;
+	spf=pass smtp.mailfrom=bounce@example.com;
+	dkim=pass header.d=example.com header.s=google;
+	dmarc=pass header.from=example.com
+Received: from mail.example.com (mail.example.com [192.0.2.10])
+	by relay.example.org (Postfix) with ESMTPS id 1KkL23mno4; Tue, 1 Jul 2025 10:00:01 +0000
+Authentication-Results: relay.example.org;
+	spf=softfail (relay.example.org: transitioning domain) smtp.mailfrom=bounce@example.com;
+	dkim=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=google;
+	h=from:to:subject; bh=ZmFrZWJvZHloYXNo=; b=ZmFrZXNpZ25hdHVyZQ==
+From: alice@example.com
+To: bob@example.net
+Subject: Two
+

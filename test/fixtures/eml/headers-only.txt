@@ -1,0 +1,8 @@
+From alice@example.com Tue Jul  1 10:00:00 2025
+Received: from mail.example.com (mail.example.com [192.0.2.10])
+	by mx.example.net (Postfix) with ESMTPS id 2LlM34nop5; Tue, 1 Jul 2025 10:00:02 +0000
+Received: from app.example.com (app.example.com [198.51.100.7])
+	by mail.example.com (Postfix) with ESMTP id 3MmN45opq6; Tue, 1 Jul 2025 10:00:00 +0000
+Authentication-Results: mx.example.net; spf=pass smtp.mailfrom=bounce@example.com; dkim=none; dmarc=pass header.from=example.com
+From: alice@example.com
+Subject: LF endings and no body

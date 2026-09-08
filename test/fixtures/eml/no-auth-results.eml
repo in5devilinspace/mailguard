@@ -1,0 +1,9 @@
+Return-Path: <>
+Received: from mail.example.com (mail.example.com [192.0.2.10])
+	by mx.example.net (Postfix) with ESMTPS id 8HhI90jkl1; Tue, 1 Jul 2025 10:00:02 +0000
+Received: by mail.example.com (Postfix, from userid 1000) id 9IiJ01klm2; Tue, 1 Jul 2025 10:00:00 +0000
+From: Mailer Daemon <mailer-daemon@example.com>
+To: alice@example.com
+Subject: Undelivered Mail Returned to Sender
+
+Body.

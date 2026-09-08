@@ -147,7 +147,7 @@ export interface AuthResultEntry {
 }
 
 export interface AuthResults {
-  authservId: string;
+  authservId: string | null;
   results: AuthResultEntry[];
 }
 

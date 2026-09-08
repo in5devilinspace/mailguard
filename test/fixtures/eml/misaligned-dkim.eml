@@ -1,0 +1,19 @@
+Return-Path: <bounces@bulk-mailer.net>
+Received: from out1.bulk-mailer.net (out1.bulk-mailer.net [203.0.113.5])
+	by mx.example.net (Postfix) with ESMTPS id 7GhI90jkl1
+	for <bob@example.net>; Tue, 1 Jul 2025 10:00:03 +0000 (UTC)
+Received: from campaign.bulk-mailer.net (campaign.bulk-mailer.net [203.0.113.9])
+	by out1.bulk-mailer.net (Postfix) with ESMTP id 8JkL23mno4;
+	Tue, 1 Jul 2025 10:00:00 +0000
+Authentication-Results: mx.example.net;
+	dkim=pass header.d=bulk-mailer.net header.s=bm1 header.b=ZyXwVu98;
+	spf=pass smtp.mailfrom=bounces@bulk-mailer.net;
+	dmarc=fail reason="No valid SPF, no valid DKIM" header.from=example.com
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=bulk-mailer.net; s=bm1;
+	h=to:subject:date:message-id; bh=ZmFrZWJvZHloYXNo=; b=ZmFrZXNpZ25hdHVyZQ==
+From: Alice Example <alice@example.com>
+To: bob@example.net
+Subject: Newsletter
+Date: Tue, 1 Jul 2025 10:00:00 +0000
+
+Body.

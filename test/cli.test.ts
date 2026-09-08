@@ -93,3 +93,39 @@ test('A7: nxdomain zone exits 2 with "does not resolve" on stderr', async () => 
   assert.equal(result.stdout, '');
   assert.match(result.stderr, /does not resolve/);
 });
+
+import { analyzeHeaders } from '../src/headers.ts';
+import { readEml } from './helpers.ts';
+
+test('A8: headers <file> --json prints the analysis JSON; text mode lists hops', async () => {
+  const result = await runCli(['headers', 'test/fixtures/eml/gmail-pass.eml', '--json']);
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(withoutNodeWarnings(result.stderr).trim(), '');
+  const report = JSON.parse(result.stdout);
+  for (const key of ['from', 'returnPath', 'hops', 'totalTransitSeconds', 'authResults', 'verdict', 'alignment', 'dkimSignatures', 'findings']) {
+    assert.ok(key in report, `missing ${key}`);
+  }
+  assert.equal(result.stdout, toJson(analyzeHeaders(readEml('gmail-pass.eml'))));
+  const text = await runCli(['headers', 'test/fixtures/eml/misaligned-dkim.eml']);
+  assert.equal(text.code, 0);
+  assert.match(text.stdout, /From: /);
+  assert.match(text.stdout, /Hops/);
+  assert.match(text.stdout, /Alignment: misaligned/);
+  assert.match(text.stdout, /\[warning\]/);
+});
+
+test('A9: headers reads stdin (no argument or "-") and exits 2 on empty input or a missing file', async () => {
+  const stdin = await runCli(['headers'], { stdin: readEml('headers-only.txt') });
+  assert.equal(stdin.code, 0, stdin.stderr);
+  assert.match(stdin.stdout, /Total transit: 2 s/);
+  const dash = await runCli(['headers', '-', '--json'], { stdin: readEml('headers-only.txt') });
+  assert.equal(dash.code, 0);
+  assert.equal(JSON.parse(dash.stdout).hops.length, 2);
+  const empty = await runCli(['headers'], { stdin: '' });
+  assert.equal(empty.code, 2);
+  assert.equal(empty.stdout, '');
+  assert.match(empty.stderr, /no headers/);
+  const missing = await runCli(['headers', 'test/fixtures/eml/does-not-exist.eml']);
+  assert.equal(missing.code, 2);
+  assert.match(missing.stderr, /does-not-exist\.eml/);
+});
