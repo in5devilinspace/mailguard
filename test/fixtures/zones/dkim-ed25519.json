@@ -1,0 +1,52 @@
+{
+  "example.com": {
+    "TXT": [
+      "v=spf1 include:_spf.example.com -all",
+      "google-site-verification=abc123"
+    ],
+    "MX": [
+      {
+        "priority": 20,
+        "exchange": "mx2.example.com"
+      },
+      {
+        "priority": 10,
+        "exchange": "mx1.example.com"
+      }
+    ],
+    "A": [
+      "192.0.2.1"
+    ],
+    "AAAA": [
+      "2001:db8::1"
+    ]
+  },
+  "_spf.example.com": {
+    "TXT": [
+      "v=spf1 ip4:192.0.2.0/24 ip6:2001:db8::/32 -all"
+    ]
+  },
+  "_dmarc.example.com": {
+    "TXT": [
+      "v=DMARC1; p=reject; rua=mailto:dmarc@example.com; adkim=s; aspf=s"
+    ]
+  },
+  "mx1.example.com": {
+    "A": [
+      "192.0.2.10"
+    ],
+    "AAAA": [
+      "2001:db8::10"
+    ]
+  },
+  "mx2.example.com": {
+    "A": [
+      "192.0.2.11"
+    ]
+  },
+  "mail._domainkey.example.com": {
+    "TXT": [
+      "v=DKIM1; k=ed25519; p=u40ENOy4uu52y3TiEIp4E1P8iqS95Zn0QDyDOVEr5Qo="
+    ]
+  }
+}

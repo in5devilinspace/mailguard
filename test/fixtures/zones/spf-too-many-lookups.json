@@ -1,0 +1,69 @@
+{
+  "example.com": {
+    "TXT": [
+      "v=spf1 include:_spf1.example.com include:_spf2.example.com include:_spf3.example.com -all"
+    ],
+    "MX": [
+      {
+        "priority": 20,
+        "exchange": "mx2.example.com"
+      },
+      {
+        "priority": 10,
+        "exchange": "mx1.example.com"
+      }
+    ],
+    "A": [
+      "192.0.2.1"
+    ],
+    "AAAA": [
+      "2001:db8::1"
+    ]
+  },
+  "_dmarc.example.com": {
+    "TXT": [
+      "v=DMARC1; p=reject; rua=mailto:dmarc@example.com; adkim=s; aspf=s"
+    ]
+  },
+  "google._domainkey.example.com": {
+    "TXT": [
+      [
+        "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApWvfW36SB0V+nZPBRcWZUtXJbYAbZ75KQ/2xKSxW/acWR003QkBClFLnCYbt56KbE7X6h+FVeT+FAMplHhESQtbMSGbX8RurTDkewrrNrq0dF2L9n5q5ObSTRiBk9uYPYOe3axpWnUskZKuyBdL5szK+sSADHJEwq2tOxBiV76PrfopNrHFUcfbxTmHl/sOGj",
+        "C7YKYGNiDAGwI6xuacukZZVyKOh8ocuvM1vrM6QZkJnw2A5V9gF6VLzpTFyULK9NHhnjyLeeVaiCZLO5LBqY4Y28QOk2ezArdWzD5Ybt/tNUHvsNtz/2D6DM7pGUSv5g03RUCu1d45jHiC2x6KBXwIDAQAB"
+      ]
+    ]
+  },
+  "mx1.example.com": {
+    "A": [
+      "192.0.2.10"
+    ],
+    "AAAA": [
+      "2001:db8::10"
+    ]
+  },
+  "mx2.example.com": {
+    "A": [
+      "192.0.2.11"
+    ]
+  },
+  "_spf1.example.com": {
+    "TXT": [
+      "v=spf1 a mx include:_deep.example.com -all"
+    ]
+  },
+  "_spf2.example.com": {
+    "TXT": [
+      "v=spf1 a mx -all"
+    ]
+  },
+  "_spf3.example.com": {
+    "TXT": [
+      "v=spf1 a a:mail.example.com mx -all"
+    ]
+  },
+  "_deep.example.com": {
+    "TXT": [
+      "v=spf1 ip4:198.51.100.0/24 -all"
+    ]
+  }
+}
