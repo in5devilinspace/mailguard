@@ -1,0 +1,23 @@
+{
+  "name": "mailguard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SPF, DKIM, DMARC and MX auditor plus an email header analyzer, stdlib-only Node",
+  "type": "module",
+  "license": "MIT",
+  "author": "Matt Dundore",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "mailguard": "bin/mailguard.ts"
+  },
+  "scripts": {
+    "test": "tsc --noEmit && node --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}
